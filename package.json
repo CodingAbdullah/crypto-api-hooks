@@ -1,6 +1,6 @@
 {
   "name": "ethereum-hooks",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Resourceful NPM package that contains React hooks for working with the Ethereum Blockchain.",
   "exports": {
     "./ens": {
