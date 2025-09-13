@@ -28,16 +28,42 @@ No backend setup or environment variables are required on your end.
 
 ## React Client Hooks
 
-The hooks cover several areas of the Ethereum blockchain and can be used for Layer Two chains as well. 
+The hooks cover several areas of the Ethereum blockchain and can be used for Layer Two chains as well.
 
 Each hook automatically connects to its dedicated AWS Lambda endpoint - no manual URL configuration is needed.
+
+### Import Structure (v2.0.2+)
+
+Starting with version 2.0.2, hooks are organized into grouped imports for better organization:
+
+```javascript
+// ENS Hooks
+import { useAddressENSLookup, useENSNameLookup, useENSAddressLookup, useENSIDLookup } from 'ethereum-hooks/ens';
+
+// ERC20 Token Hooks
+import { useERC20Holdings, useERC20Transfers, useERC20CollectionOwners } from 'ethereum-hooks/erc20';
+
+// ERC721 Token Hooks
+import { useERC721CollectionData, useERC721Holdings, useERC721LookupData } from 'ethereum-hooks/erc721';
+
+// Gas Hooks
+import { useGasLookup } from 'ethereum-hooks/gas';
+
+// Price Hooks
+import { useETHPrice, useERC20Price, useERC721Price, useLayerTwoPrice } from 'ethereum-hooks/prices';
+```
+
+This structured approach makes it easier to:
+- Import only what you need
+- Understand which category each hook belongs to
+- Maintain cleaner import statements
 
 Here is a quick example of how you can work with client hooks. The following is a code snippet for working with React.js:
 
 <code>ENSToAddressPage.tsx</code>
 ```javascript
 import React, { FC }  from 'react';
-import { useENSAddressLookup } from 'ethereum-hooks';
+import { useENSAddressLookup } from 'ethereum-hooks/ens';
 
 // Incorporating the ENS to Address Client Hook.. using Vitalik Buterin's address
 // No server setup required - connects directly to AWS Lambda

@@ -2,8 +2,33 @@
   "name": "ethereum-hooks",
   "version": "2.0.1",
   "description": "Resourceful NPM package that contains React hooks for working with the Ethereum Blockchain.",
-  "main": "crypto_hooks/index.js",
-  "types": "crypto_hooks/index.d.ts",
+  "exports": {
+    "./ens": {
+      "import": "./crypto_hooks/ens/index.js",
+      "require": "./crypto_hooks/ens/index.js",
+      "types": "./crypto_hooks/ens/index.d.ts"
+    },
+    "./erc20": {
+      "import": "./crypto_hooks/erc20Tokens/index.js",
+      "require": "./crypto_hooks/erc20Tokens/index.js",
+      "types": "./crypto_hooks/erc20Tokens/index.d.ts"
+    },
+    "./erc721": {
+      "import": "./crypto_hooks/erc721Tokens/index.js",
+      "require": "./crypto_hooks/erc721Tokens/index.js",
+      "types": "./crypto_hooks/erc721Tokens/index.d.ts"
+    },
+    "./gas": {
+      "import": "./crypto_hooks/gas/index.js",
+      "require": "./crypto_hooks/gas/index.js",
+      "types": "./crypto_hooks/gas/index.d.ts"
+    },
+    "./prices": {
+      "import": "./crypto_hooks/prices/index.js",
+      "require": "./crypto_hooks/prices/index.js",
+      "types": "./crypto_hooks/prices/index.d.ts"
+    }
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/CodingAbdullah/ethereum-hooks.git"
@@ -21,7 +46,11 @@
   "license": "MIT",
   "private": false,
   "files": [
-    "crypto_hooks/**/*",
+    "crypto_hooks/ens/**/*",
+    "crypto_hooks/erc20Tokens/**/*",
+    "crypto_hooks/erc721Tokens/**/*",
+    "crypto_hooks/gas/**/*",
+    "crypto_hooks/prices/**/*",
     "custom_hooks/**/*",
     "types/**/*"
   ],
