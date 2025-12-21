@@ -1,0 +1,1738 @@
+openapi: 3.0.3
+info:
+  title: Ethereum Hooks API
+  description: |
+    RESTful API for Ethereum blockchain data including ENS, ERC20 tokens, ERC721 tokens (NFTs), gas information, and pricing data.
+
+    This API powers the ethereum-hooks NPM package, providing React hooks for working with the Ethereum Blockchain.
+
+    ## Data Sources
+    This API aggregates data from various blockchain data providers including Alchemy, Etherscan, OpenSea, and CoinGecko.
+  version: 2.0.2
+  contact:
+    name: CodingAbdullah
+    url: https://github.com/CodingAbdullah/ethereum-hooks
+  license:
+    name: MIT
+
+servers:
+  - url: https://lambda-url.us-east-1.on.aws
+    description: AWS Lambda Production Server
+
+tags:
+  - name: ENS
+    description: Ethereum Name Service lookup and resolution endpoints
+  - name: ERC20
+    description: ERC20 token data and analytics endpoints
+  - name: ERC721
+    description: ERC721 (NFT) token data and analytics endpoints
+  - name: Gas
+    description: Gas price and network fee information
+  - name: Pricing
+    description: Token and cryptocurrency pricing data
+  - name: Prices
+    description: Historical and current price data for tokens and cryptocurrencies
+
+paths:
+  # ==================== ENS ENDPOINTS ====================
+  /address-to-ens-information:
+    post:
+      tags:
+        - ENS
+      summary: Lookup ENS name from Ethereum address
+      description: Performs reverse resolution to convert an Ethereum address to its associated ENS name
+      operationId: getAddressENSLookup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - address
+              properties:
+                address:
+                  type: string
+                  description: Ethereum wallet address (checksummed format recommended)
+                  pattern: '^0x[a-fA-F0-9]{40}$'
+                  example: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: Primary ENS name for the address
+                    example: "vitalik.eth"
+                  address:
+                    type: string
+                    description: Checksummed Ethereum address
+                    example: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+                  resolver:
+                    type: string
+                    description: ENS resolver contract address
+                    example: "0x4976fb03C32e5B8cfe2b6cCB31c09Ba78EBaBa41"
+                  avatar:
+                    type: string
+                    nullable: true
+                    description: Avatar URL if set
+                    example: "https://i.imgur.com/gF8dSSI.jpg"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /ens-to-address-information:
+    post:
+      tags:
+        - ENS
+      summary: Lookup Ethereum address from ENS name
+      description: Performs forward resolution to convert an ENS name to its associated Ethereum address
+      operationId: getENSAddressLookup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ensName
+              properties:
+                ensName:
+                  type: string
+                  description: ENS domain name
+                  pattern: '^[a-z0-9-]+\.eth$'
+                  example: "vitalik.eth"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  address:
+                    type: string
+                    description: Resolved Ethereum address
+                    example: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+                  name:
+                    type: string
+                    description: ENS name
+                    example: "vitalik.eth"
+                  resolver:
+                    type: string
+                    description: Resolver contract address
+                    example: "0x4976fb03C32e5B8cfe2b6cCB31c09Ba78EBaBa41"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /ens-transfers-by-id:
+    post:
+      tags:
+        - ENS
+      summary: Lookup ENS transfers by token ID
+      description: Retrieves transfer history for an ENS domain by its token ID
+      operationId: getENSIDLookup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+                  description: ENS token ID (numeric string)
+                  example: "79233663829379634837589865448569342784712482819484549289560981379859480642508"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transfers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ENSTransfer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /ens-transfers-by-name:
+    post:
+      tags:
+        - ENS
+      summary: Lookup ENS transfers by name
+      description: Retrieves transfer history for an ENS domain by its name
+      operationId: getENSNameLookup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ensName
+              properties:
+                ensName:
+                  type: string
+                  description: ENS domain name
+                  example: "vitalik.eth"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transfers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ENSTransfer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== ERC20 ENDPOINTS ====================
+  /erc20-collection-owners:
+    post:
+      tags:
+        - ERC20
+      summary: Get ERC20 token holders
+      description: Retrieves the list of token holders for a specific ERC20 contract
+      operationId: getERC20CollectionOwners
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractAddressRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  owners:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        address:
+                          type: string
+                          example: "0x1234567890123456789012345678901234567890"
+                        balance:
+                          type: string
+                          description: Token balance in wei
+                          example: "1000000000000000000000"
+                        percentage:
+                          type: number
+                          description: Percentage of total supply
+                          example: 2.5
+                  totalHolders:
+                    type: integer
+                    example: 1250000
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc20-top-coins:
+    post:
+      tags:
+        - ERC20
+      summary: Get top ERC20 tokens
+      description: Retrieves a list of the top ERC20 tokens by market cap and volume
+      operationId: getERC20CollectionTopCoins
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      example: "tether"
+                    symbol:
+                      type: string
+                      example: "USDT"
+                    name:
+                      type: string
+                      example: "Tether"
+                    contractAddress:
+                      type: string
+                      example: "0xdac17f958d2ee523a2206206994597c13d831ec7"
+                    currentPrice:
+                      type: number
+                      example: 1.00
+                    marketCap:
+                      type: number
+                      example: 95000000000
+                    marketCapRank:
+                      type: integer
+                      example: 3
+                    totalVolume:
+                      type: number
+                      example: 50000000000
+                    priceChange24h:
+                      type: number
+                      example: 0.0012
+                    priceChangePercentage24h:
+                      type: number
+                      example: 0.12
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc20-collection-transfers:
+    post:
+      tags:
+        - ERC20
+      summary: Get ERC20 collection transfers
+      description: Retrieves recent transfer events for a specific ERC20 token contract
+      operationId: getERC20CollectionTransfers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractAddressRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transfers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ERC20Transfer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc20-collection-holdings:
+    post:
+      tags:
+        - ERC20
+      summary: Get ERC20 token holdings
+      description: Retrieves holdings information for a specific ERC20 token contract
+      operationId: getERC20Holdings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractAddressRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  contractAddress:
+                    type: string
+                    example: "0xdac17f958d2ee523a2206206994597c13d831ec7"
+                  tokenName:
+                    type: string
+                    example: "Tether USD"
+                  tokenSymbol:
+                    type: string
+                    example: "USDT"
+                  decimals:
+                    type: integer
+                    example: 6
+                  totalSupply:
+                    type: string
+                    example: "95000000000000000"
+                  holders:
+                    type: integer
+                    example: 5200000
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc20-transfers:
+    post:
+      tags:
+        - ERC20
+      summary: Get ERC20 transfers
+      description: Retrieves transfer events for a specific ERC20 token contract
+      operationId: getERC20Transfers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractAddressRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transfers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ERC20Transfer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== ERC721 ENDPOINTS ====================
+  /erc721-collection-attributes:
+    post:
+      tags:
+        - ERC721
+      summary: Get NFT collection attributes
+      description: Retrieves trait attributes and their distribution for an NFT collection
+      operationId: getERC721CollectionAttributes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractAddressRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  attributes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        trait_type:
+                          type: string
+                          example: "Background"
+                        values:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              value:
+                                type: string
+                                example: "Blue"
+                              count:
+                                type: integer
+                                example: 1250
+                              percentage:
+                                type: number
+                                example: 12.5
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc721-collection-data:
+    post:
+      tags:
+        - ERC721
+      summary: Get NFT collection data
+      description: Retrieves general information about an NFT collection
+      operationId: getERC721CollectionData
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractAddressRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NFTCollectionData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc721-collection-extra-data:
+    post:
+      tags:
+        - ERC721
+      summary: Get NFT collection extra data
+      description: Retrieves additional metadata and statistics for an NFT collection
+      operationId: getERC721CollectionExtraData
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractAddressRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bannerImageUrl:
+                    type: string
+                    nullable: true
+                  chatUrl:
+                    type: string
+                    nullable: true
+                  discordUrl:
+                    type: string
+                    nullable: true
+                  externalUrl:
+                    type: string
+                    nullable: true
+                  instagramUsername:
+                    type: string
+                    nullable: true
+                  mediumUsername:
+                    type: string
+                    nullable: true
+                  telegramUrl:
+                    type: string
+                    nullable: true
+                  twitterUsername:
+                    type: string
+                    nullable: true
+                  wikiUrl:
+                    type: string
+                    nullable: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc721-collection-floor-price:
+    post:
+      tags:
+        - ERC721
+      summary: Get NFT collection floor price
+      description: Retrieves the current floor price for an NFT collection across marketplaces
+      operationId: getERC721CollectionFloorPrice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractAddressRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  openSea:
+                    $ref: '#/components/schemas/MarketplaceFloorPrice'
+                  looksRare:
+                    $ref: '#/components/schemas/MarketplaceFloorPrice'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc721-collection-market-cap:
+    post:
+      tags:
+        - ERC721
+      summary: Get NFT collection market cap
+      description: Retrieves market cap data for an NFT collection over a specified duration
+      operationId: getERC721CollectionMarketCap
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - contractAddress
+                - duration
+              properties:
+                contractAddress:
+                  type: string
+                  example: "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d"
+                duration:
+                  type: integer
+                  enum: [2, 14, 30]
+                  description: Duration in days
+                  example: 14
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  marketCap:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        timestamp:
+                          type: integer
+                          description: Unix timestamp
+                          example: 1672531200
+                        marketCap:
+                          type: number
+                          description: Market cap in ETH
+                          example: 125000.5
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc721-collection-sales:
+    post:
+      tags:
+        - ERC721
+      summary: Get NFT collection sales
+      description: Retrieves recent sales data for an NFT collection
+      operationId: getERC721CollectionSales
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractAddressRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sales:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NFTSale'
+                  pageKey:
+                    type: string
+                    nullable: true
+                    description: Pagination key for next page
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc721-collection-transfers:
+    post:
+      tags:
+        - ERC721
+      summary: Get NFT collection transfers
+      description: Retrieves transfer history for an NFT collection
+      operationId: getERC721CollectionTransfers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractAddressRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transfers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NFTTransfer'
+                  pageKey:
+                    type: string
+                    nullable: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc721-collection-trends:
+    post:
+      tags:
+        - ERC721
+      summary: Get trending NFT collections
+      description: Retrieves currently trending NFT collections by volume and activity
+      operationId: getERC721CollectionTrends
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NFTCollectionData'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc721-collection-volume:
+    post:
+      tags:
+        - ERC721
+      summary: Get NFT collection volume
+      description: Retrieves trading volume data for top NFT collections
+      operationId: getERC721CollectionVolume
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    contractAddress:
+                      type: string
+                      example: "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d"
+                    name:
+                      type: string
+                      example: "Bored Ape Yacht Club"
+                    volume24h:
+                      type: number
+                      example: 1250.75
+                    volume7d:
+                      type: number
+                      example: 8500.25
+                    volume30d:
+                      type: number
+                      example: 35000.50
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc721-holdings:
+    post:
+      tags:
+        - ERC721
+      summary: Get NFTs held by wallet
+      description: Retrieves all NFTs held by a specific wallet address
+      operationId: getERC721Holdings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - walletAddress
+              properties:
+                walletAddress:
+                  type: string
+                  example: "0x1234567890123456789012345678901234567890"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ownedNfts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OwnedNFT'
+                  totalCount:
+                    type: integer
+                    example: 42
+                  pageKey:
+                    type: string
+                    nullable: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc721-lookup-data:
+    post:
+      tags:
+        - ERC721
+      summary: Get NFT token data
+      description: Retrieves detailed information for a specific NFT token
+      operationId: getERC721LookupData
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenLookupRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NFTMetadata'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc721-opensea-data:
+    post:
+      tags:
+        - ERC721
+      summary: Get NFT OpenSea data
+      description: Retrieves OpenSea marketplace data for a specific NFT token
+      operationId: getERC721OpenseaData
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenLookupRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tokenId:
+                    type: string
+                    example: "1234"
+                  name:
+                    type: string
+                    example: "Bored Ape #1234"
+                  description:
+                    type: string
+                  imageUrl:
+                    type: string
+                  externalLink:
+                    type: string
+                    nullable: true
+                  permalink:
+                    type: string
+                    example: "https://opensea.io/assets/ethereum/0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d/1234"
+                  collection:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      slug:
+                        type: string
+                  lastSale:
+                    $ref: '#/components/schemas/NFTSale'
+                  topBid:
+                    type: number
+                    nullable: true
+                  listingPrice:
+                    type: number
+                    nullable: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc721-rarity-data:
+    post:
+      tags:
+        - ERC721
+      summary: Get NFT rarity data
+      description: Retrieves rarity ranking and trait rarity scores for a specific NFT token
+      operationId: getERC721RarityData
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenLookupRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tokenId:
+                    type: string
+                    example: "1234"
+                  rank:
+                    type: integer
+                    description: Rarity rank within collection
+                    example: 567
+                  score:
+                    type: number
+                    description: Overall rarity score
+                    example: 245.67
+                  attributes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        trait_type:
+                          type: string
+                          example: "Background"
+                        value:
+                          type: string
+                          example: "Blue"
+                        rarity:
+                          type: number
+                          description: Trait rarity percentage
+                          example: 12.5
+                        score:
+                          type: number
+                          description: Trait rarity score
+                          example: 8.0
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc721-sales-data:
+    post:
+      tags:
+        - ERC721
+      summary: Get NFT sales history
+      description: Retrieves sales history for a specific NFT token
+      operationId: getERC721SalesData
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenLookupRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sales:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NFTSale'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc721-token-transfer-lookup-data:
+    post:
+      tags:
+        - ERC721
+      summary: Get NFT transfer history
+      description: Retrieves transfer history for a specific NFT token
+      operationId: getERC721TransferLookupData
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenLookupRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transfers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NFTTransfer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc721-wallet-transfers:
+    post:
+      tags:
+        - ERC721
+      summary: Get wallet NFT transfers
+      description: Retrieves NFT transfer history for a specific wallet address
+      operationId: getERC721TransfersData
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - walletAddress
+              properties:
+                walletAddress:
+                  type: string
+                  example: "0x1234567890123456789012345678901234567890"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transfers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NFTTransfer'
+                  pageKey:
+                    type: string
+                    nullable: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== GAS ENDPOINTS ====================
+  /gas-information:
+    get:
+      tags:
+        - Gas
+      summary: Get current gas prices
+      description: Retrieves current Ethereum network gas prices and fee estimations across different speed tiers
+      operationId: getGasLookup
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  safeLow:
+                    type: object
+                    properties:
+                      maxPriorityFee:
+                        type: number
+                        description: Priority fee in Gwei
+                        example: 1.5
+                      maxFee:
+                        type: number
+                        description: Max fee in Gwei
+                        example: 25.3
+                      estimatedWaitSeconds:
+                        type: integer
+                        example: 180
+                  standard:
+                    type: object
+                    properties:
+                      maxPriorityFee:
+                        type: number
+                        example: 2.0
+                      maxFee:
+                        type: number
+                        example: 28.5
+                      estimatedWaitSeconds:
+                        type: integer
+                        example: 60
+                  fast:
+                    type: object
+                    properties:
+                      maxPriorityFee:
+                        type: number
+                        example: 3.0
+                      maxFee:
+                        type: number
+                        example: 32.0
+                      estimatedWaitSeconds:
+                        type: integer
+                        example: 15
+                  fastest:
+                    type: object
+                    properties:
+                      maxPriorityFee:
+                        type: number
+                        example: 5.0
+                      maxFee:
+                        type: number
+                        example: 40.0
+                      estimatedWaitSeconds:
+                        type: integer
+                        example: 5
+                  baseFee:
+                    type: number
+                    description: Current base fee in Gwei
+                    example: 23.5
+                  blockNumber:
+                    type: integer
+                    description: Latest block number
+                    example: 18500000
+                  timestamp:
+                    type: integer
+                    description: Unix timestamp
+                    example: 1672531200
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== PRICE ENDPOINTS ====================
+  /erc20-token-price:
+    post:
+      tags:
+        - Pricing
+        - Prices
+      summary: Get ERC20 token price
+      description: Retrieves current and historical price data for an ERC20 token
+      operationId: getERC20Price
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - contractAddress
+                - currentPrice
+                - duration
+              properties:
+                contractAddress:
+                  type: string
+                  example: "0xdac17f958d2ee523a2206206994597c13d831ec7"
+                currentPrice:
+                  type: boolean
+                  description: Include current price in response
+                  example: true
+                duration:
+                  $ref: '#/components/schemas/PriceDuration'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  currentPrice:
+                    type: object
+                    nullable: true
+                    properties:
+                      usd:
+                        type: number
+                        example: 1.00
+                      usd_market_cap:
+                        type: number
+                        example: 95000000000
+                      usd_24h_vol:
+                        type: number
+                        example: 50000000000
+                      usd_24h_change:
+                        type: number
+                        example: 0.12
+                  prices:
+                    type: array
+                    description: Historical price data points
+                    items:
+                      type: array
+                      minItems: 2
+                      maxItems: 2
+                      items:
+                        type: number
+                      example: [1672531200000, 1.00]
+                  market_caps:
+                    type: array
+                    items:
+                      type: array
+                      minItems: 2
+                      maxItems: 2
+                      items:
+                        type: number
+                  total_volumes:
+                    type: array
+                    items:
+                      type: array
+                      minItems: 2
+                      maxItems: 2
+                      items:
+                        type: number
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /erc721-token-price:
+    post:
+      tags:
+        - Pricing
+        - Prices
+      summary: Get NFT token price
+      description: Retrieves last sale price and current listing data for a specific NFT token
+      operationId: getERC721Price
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - contractAddress
+                - tokenID
+              properties:
+                contractAddress:
+                  type: string
+                  example: "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d"
+                tokenID:
+                  type: integer
+                  example: 1234
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lastSale:
+                    type: object
+                    nullable: true
+                    properties:
+                      price:
+                        type: number
+                        description: Sale price in ETH
+                        example: 45.5
+                      priceUsd:
+                        type: number
+                        example: 75000.0
+                      timestamp:
+                        type: integer
+                        example: 1672531200
+                      marketplace:
+                        type: string
+                        example: "opensea"
+                  currentListingPrice:
+                    type: number
+                    nullable: true
+                    description: Current listing price in ETH
+                    example: 50.0
+                  floorPrice:
+                    type: number
+                    description: Collection floor price in ETH
+                    example: 40.5
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /eth-price:
+    post:
+      tags:
+        - Pricing
+        - Prices
+      summary: Get Ethereum price
+      description: Retrieves current and historical price data for Ethereum
+      operationId: getETHPrice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentPrice
+                - duration
+              properties:
+                currentPrice:
+                  type: boolean
+                  example: true
+                duration:
+                  $ref: '#/components/schemas/PriceDuration'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  currentPrice:
+                    type: object
+                    nullable: true
+                    properties:
+                      usd:
+                        type: number
+                        example: 1650.25
+                      eur:
+                        type: number
+                        example: 1520.30
+                      usd_market_cap:
+                        type: number
+                        example: 200000000000
+                      usd_24h_vol:
+                        type: number
+                        example: 15000000000
+                      usd_24h_change:
+                        type: number
+                        example: 2.5
+                  prices:
+                    type: array
+                    description: Historical price data [timestamp, price]
+                    items:
+                      type: array
+                      minItems: 2
+                      maxItems: 2
+                      items:
+                        type: number
+                      example: [1672531200000, 1650.25]
+                  market_caps:
+                    type: array
+                    items:
+                      type: array
+                      items:
+                        type: number
+                  total_volumes:
+                    type: array
+                    items:
+                      type: array
+                      items:
+                        type: number
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /layer-two-prices:
+    post:
+      tags:
+        - Pricing
+        - Prices
+      summary: Get Layer 2 token prices
+      description: Retrieves current and historical price data for Layer 2 network tokens
+      operationId: getLayerTwoPrice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - layerTwo
+                - currentPrice
+                - duration
+              properties:
+                layerTwo:
+                  $ref: '#/components/schemas/LayerTwoNetwork'
+                currentPrice:
+                  type: boolean
+                  example: true
+                duration:
+                  $ref: '#/components/schemas/PriceDuration'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  network:
+                    type: string
+                    example: "optimism"
+                  currentPrice:
+                    type: object
+                    nullable: true
+                    properties:
+                      usd:
+                        type: number
+                        example: 2.15
+                      eur:
+                        type: number
+                        example: 2.00
+                      usd_market_cap:
+                        type: number
+                        example: 2000000000
+                      usd_24h_vol:
+                        type: number
+                        example: 150000000
+                      usd_24h_change:
+                        type: number
+                        example: 3.2
+                  prices:
+                    type: array
+                    items:
+                      type: array
+                      minItems: 2
+                      maxItems: 2
+                      items:
+                        type: number
+                  market_caps:
+                    type: array
+                    items:
+                      type: array
+                      items:
+                        type: number
+                  total_volumes:
+                    type: array
+                    items:
+                      type: array
+                      items:
+                        type: number
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+# ==================== COMPONENTS ====================
+components:
+  schemas:
+    ContractAddressRequest:
+      type: object
+      required:
+        - contractAddress
+      properties:
+        contractAddress:
+          type: string
+          description: Smart contract address
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          example: "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d"
+
+    TokenLookupRequest:
+      type: object
+      required:
+        - contractAddress
+        - tokenID
+      properties:
+        contractAddress:
+          type: string
+          example: "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d"
+        tokenID:
+          type: string
+          description: Token ID as string
+          example: "1234"
+
+    ENSTransfer:
+      type: object
+      properties:
+        blockNumber:
+          type: integer
+          example: 18500000
+        timestamp:
+          type: integer
+          description: Unix timestamp
+          example: 1672531200
+        from:
+          type: string
+          example: "0x1234567890123456789012345678901234567890"
+        to:
+          type: string
+          example: "0x0987654321098765432109876543210987654321"
+        tokenId:
+          type: string
+          example: "79233663829379634837589865448569342784712482819484549289560981379859480642508"
+        transactionHash:
+          type: string
+          example: "0xabc123def456..."
+
+    ERC20Transfer:
+      type: object
+      properties:
+        blockNumber:
+          type: integer
+          example: 18500000
+        timestamp:
+          type: integer
+          example: 1672531200
+        from:
+          type: string
+          example: "0x1234567890123456789012345678901234567890"
+        to:
+          type: string
+          example: "0x0987654321098765432109876543210987654321"
+        value:
+          type: string
+          description: Transfer amount in wei
+          example: "1000000000000000000"
+        tokenName:
+          type: string
+          example: "Tether USD"
+        tokenSymbol:
+          type: string
+          example: "USDT"
+        transactionHash:
+          type: string
+          example: "0xabc123def456..."
+
+    NFTTransfer:
+      type: object
+      properties:
+        blockNumber:
+          type: integer
+          example: 18500000
+        timestamp:
+          type: integer
+          example: 1672531200
+        from:
+          type: string
+          example: "0x1234567890123456789012345678901234567890"
+        to:
+          type: string
+          example: "0x0987654321098765432109876543210987654321"
+        tokenId:
+          type: string
+          example: "1234"
+        transactionHash:
+          type: string
+          example: "0xabc123def456..."
+        category:
+          type: string
+          enum: [erc721, erc1155]
+          example: "erc721"
+
+    NFTSale:
+      type: object
+      properties:
+        marketplace:
+          type: string
+          enum: [opensea, looksrare, blur, x2y2, seaport, wyvern, cryptopunks]
+          example: "opensea"
+        marketplaceAddress:
+          type: string
+          example: "0x00000000006c3852cbef3e08e8df289169ede581"
+        contractAddress:
+          type: string
+          example: "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d"
+        tokenId:
+          type: string
+          example: "1234"
+        quantity:
+          type: string
+          example: "1"
+        buyerAddress:
+          type: string
+          example: "0x1234567890123456789012345678901234567890"
+        sellerAddress:
+          type: string
+          example: "0x0987654321098765432109876543210987654321"
+        taker:
+          type: string
+          enum: [BUYER, SELLER]
+          example: "BUYER"
+        sellerFee:
+          type: string
+          description: Seller proceeds in wei
+          example: "45000000000000000000"
+        protocolFee:
+          type: string
+          description: Marketplace fee in wei
+          example: "1125000000000000000"
+        royaltyFee:
+          type: string
+          description: Creator royalty in wei
+          example: "2250000000000000000"
+        blockNumber:
+          type: integer
+          example: 18500000
+        timestamp:
+          type: integer
+          example: 1672531200
+        transactionHash:
+          type: string
+          example: "0xabc123def456..."
+
+    NFTCollectionData:
+      type: object
+      properties:
+        contractAddress:
+          type: string
+          example: "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d"
+        name:
+          type: string
+          example: "Bored Ape Yacht Club"
+        symbol:
+          type: string
+          example: "BAYC"
+        totalSupply:
+          type: integer
+          example: 10000
+        description:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        floorPrice:
+          type: number
+          description: Floor price in ETH
+          example: 40.5
+        volume24h:
+          type: number
+          example: 1250.75
+        owners:
+          type: integer
+          example: 6500
+
+    NFTMetadata:
+      type: object
+      properties:
+        contractAddress:
+          type: string
+          example: "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d"
+        tokenId:
+          type: string
+          example: "1234"
+        name:
+          type: string
+          example: "Bored Ape #1234"
+        description:
+          type: string
+          nullable: true
+        image:
+          type: string
+          description: Image URI
+        external_url:
+          type: string
+          nullable: true
+        attributes:
+          type: array
+          items:
+            type: object
+            properties:
+              trait_type:
+                type: string
+                example: "Background"
+              value:
+                oneOf:
+                  - type: string
+                  - type: number
+                example: "Blue"
+              display_type:
+                type: string
+                nullable: true
+                enum: [number, boost_number, boost_percentage, date]
+
+    OwnedNFT:
+      type: object
+      properties:
+        contractAddress:
+          type: string
+          example: "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d"
+        tokenId:
+          type: string
+          example: "1234"
+        tokenType:
+          type: string
+          enum: [ERC721, ERC1155]
+          example: "ERC721"
+        balance:
+          type: string
+          description: Token balance (1 for ERC721, variable for ERC1155)
+          example: "1"
+        metadata:
+          $ref: '#/components/schemas/NFTMetadata'
+
+    MarketplaceFloorPrice:
+      type: object
+      properties:
+        floorPrice:
+          type: number
+          description: Floor price in ETH
+          example: 40.5
+        priceCurrency:
+          type: string
+          example: "ETH"
+        retrievedAt:
+          type: integer
+          description: Unix timestamp of when price was last updated
+          example: 1672531200
+        collectionUrl:
+          type: string
+          nullable: true
+
+    LayerTwoNetwork:
+      type: string
+      enum:
+        - optimism
+        - arbitrum
+        - matic-network
+        - zksync
+        - immutable-x
+        - starknet
+        - boba-network
+        - sushi
+        - metis-token
+        - hermez-network-token
+        - celer-network
+        - havven
+        - devve
+        - loopring
+        - biconomy
+        - bancor
+        - aave
+        - perpetual-protocol
+        - cartesi
+        - zora-bridged-weth-zora-network
+      description: Supported Layer 2 network identifiers
+      example: "optimism"
+
+    PriceDuration:
+      type: integer
+      enum: [2, 14, 30]
+      description: Duration in days for historical price data (2, 14, or 30 days)
+      example: 14
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code or type
+          example: "INVALID_ADDRESS"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "The provided address is not a valid Ethereum address"
+        details:
+          type: object
+          nullable: true
+          description: Additional error context
+
+  responses:
+    BadRequest:
+      description: Bad request - Invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "BAD_REQUEST"
+            message: "Invalid request parameters"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "INTERNAL_ERROR"
+            message: "An unexpected error occurred"
