@@ -1,6 +1,6 @@
 {
   "name": "ethereum-hooks",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "homepage": "https://codingabdullah.github.io/ethereum-hooks/",
   "description": "Resourceful NPM package that contains React hooks for working with the Ethereum Blockchain.",
   "exports": {
@@ -60,9 +60,9 @@
     "react-dom": ">=18.0.0"
   },
   "devDependencies": {
-    "@types/react": "^19.1.12",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "typescript": "^5.8.3"
+    "@types/react": "^19.2.14",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "typescript": "^6.0.2"
   }
 }
